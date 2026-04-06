@@ -89,6 +89,7 @@ class MaskPreview(SaveImage):
     def INPUT_TYPES(s):
         return {
             "required": {"mask": ("MASK",), },
+            
             "hidden": {"prompt": "PROMPT", "extra_pnginfo": "EXTRA_PNGINFO"},
         }
 
@@ -98,6 +99,46 @@ class MaskPreview(SaveImage):
     def execute(self, mask, filename_prefix="ComfyUI", prompt=None, extra_pnginfo=None):
         preview = mask.reshape((-1, 1, mask.shape[-2], mask.shape[-1])).movedim(1, -1).expand(-1, -1, -1, 3)
         return self.save_images(preview, filename_prefix, prompt, extra_pnginfo)
+
+
+class MaskMultiply:
+    @classmethod
+    def INPUT_TYPES(s):
+        return {
+            "required": {
+                            "mask": ("MASK",),
+                            "image": ("IMAGE",),
+            },
+            "hidden": {"prompt": "PROMPT", "extra_pnginfo": "EXTRA_PNGINFO"},
+        }
+
+    RETURN_TYPES = ("IMAGE",)
+    FUNCTION = "execute"
+    CATEGORY = "essentials/mask"
+
+    def execute(self, mask, image, filename_prefix="ComfyUI", prompt=None, extra_pnginfo=None):
+        print(f"image.shape={image.shape}")
+        print(f"mask.shape={mask.shape}")
+        new_mask = mask
+        if mask.dim() == 3:
+            new_mask = mask.unsqueeze(-1)
+
+        # print("multiply  mask=", new_mask[20:40,20:40])
+        # print(new_mask)    
+        # change from (batch, channel, height, width)
+        if new_mask.shape[1] in [1,3]:
+            new_mask = new_mask.permute(0, 2, 3, 1) # changed to (batch, height, width, channel)
+        
+        img_channels = image.shape[-1]
+        if new_mask.shape[-1] == 1:
+            new_mask = new_mask.repeat(1, 1, 1, img_channels)
+        
+        print(f"new_mask.shape={new_mask.shape}")
+        after_mul = image * new_mask
+        
+        # return self.save_images(after_mul, filename_prefix, prompt, extra_pnginfo)
+        return(after_mul,)
+
 
 class MaskBatch:
     @classmethod
@@ -158,11 +199,16 @@ class MaskBoundingBox:
     CATEGORY = "essentials/mask"
 
     def execute(self, mask, padding, blur, image_optional=None):
-        if mask.dim() == 2:
-            mask = mask.unsqueeze(0)
+        print("MaskBoundingBox: mask.shape=",mask.shape)
+        if mask.dim() == 2: # [H, W]
+            mask = mask.unsqueeze(0) # [1, H, W]
+
+        if mask.dim() == 4: # [B, C, H, W]
+            mask = mask.squeeze(1) # [B, H, W]        
 
         if image_optional is None:
-            image_optional = mask.unsqueeze(3).repeat(1, 1, 1, 3)
+            if mask.dim() == 3: # [batch, H, W]
+                image_optional = mask.unsqueeze(3).repeat(1, 1, 1, 3) # Adds a channel to last index -> [B,H,W,1] and after repeat -> [1,1,1,3]
 
         # resize the image if it's not the same size as the mask
         if image_optional.shape[1:] != mask.shape[1:]:
@@ -181,10 +227,11 @@ class MaskBoundingBox:
             mask = T.functional.gaussian_blur(mask.unsqueeze(1), blur).squeeze(1)
 
         _, y, x = torch.where(mask)
-        x1 = max(0, x.min().item() - padding)
-        x2 = min(mask.shape[2], x.max().item() + 1 + padding)
-        y1 = max(0, y.min().item() - padding)
-        y2 = min(mask.shape[1], y.max().item() + 1 + padding)
+        #x1 = max(0, x.min().item() - padding) # commented for error, when x tensor is empty
+        x1 = max(0, x.min().item() - padding) if x.numel() > 0 else 0
+        x2 = min(mask.shape[2], x.max().item() + 1 + padding) if x.numel() > 0 else 0
+        y1 = max(0, y.min().item() - padding) if y.numel() > 0 else 0
+        y2 = min(mask.shape[1], y.max().item() + 1 + padding) if y.numel() > 0 else 0
 
         # crop the mask
         mask = mask[:, y1:y2, x1:x2]
@@ -568,6 +615,7 @@ MASK_CLASS_MAPPINGS = {
     "MaskFromRGBCMYBW+": MaskFromRGBCMYBW,
     "MaskFromSegmentation+": MaskFromSegmentation,
     "MaskPreview+": MaskPreview,
+    "MaskMultiply":MaskMultiply,
     "MaskSmooth+": MaskSmooth,
     "TransitionMask+": TransitionMask,
 
@@ -586,6 +634,7 @@ MASK_NAME_MAPPINGS = {
     "MaskFromRGBCMYBW+": "🔧 Mask From RGB/CMY/BW",
     "MaskFromSegmentation+": "🔧 Mask From Segmentation",
     "MaskPreview+": "🔧 Mask Preview",
+    "MaskMultiply": "🔧 MaskMultiply",
     "MaskBoundingBox+": "🔧 Mask Bounding Box",
     "MaskSmooth+": "🔧 Mask Smooth",
     "TransitionMask+": "🔧 Transition Mask",
