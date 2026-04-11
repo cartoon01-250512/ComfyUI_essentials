@@ -4,3 +4,7 @@
 /fonts/*.ttf
 /fonts/*.otf
 !/fonts/ShareTechMono-Regular.ttf
+.env
+*.log
+node_modules/
+.idea/
