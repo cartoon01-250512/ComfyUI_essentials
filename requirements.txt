@@ -3,3 +3,7 @@ colour-science
 rembg
 pixeloe
 transparent-background
+## Added for face_align, neck_refine
+dlib>=19.24.9
+scikit-image>=0.24.0
+mediapipe>=0.10.21
