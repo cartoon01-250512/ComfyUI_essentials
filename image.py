@@ -1965,10 +1965,10 @@ class RefineNeckSegment:
         # _, neck_mask = cv2.threshold(neck_mask, 127, 1, cv2.THRESH_BINARY)
 
         print("Neck Mask")
-        np.set_printoptions(threshold=np.inf)
+        # np.set_printoptions(threshold=np.inf)
         print(neck_mask.shape)
-        print(neck_mask[100:216,100:216])
-        np.set_printoptions(threshold=1000)
+        # print(neck_mask[100:216,100:216])
+        # np.set_printoptions(threshold=1000)
 
         # Why convert to Lab color space
         # 1.Lighting Invariance: Since the L channel captures lightness and a/b channels capture color, 
@@ -2381,9 +2381,9 @@ class MediapipeImageSegmenter:
                     # Convert boolean mask to integer mask (0 or 1)
                     bin_cat_mask = cat_mask_bool.astype(np.uint8)                    
   
-                    torch.set_printoptions(threshold=float('inf'))
-                    print("cat_confidence_seg mask=",bin_cat_mask[:40,:30])
-                    torch.set_printoptions(profile='default')                          
+                    # torch.set_printoptions(threshold=float('inf'))
+                    # print("cat_confidence_seg mask=",bin_cat_mask[:40,:30])
+                    # torch.set_printoptions(profile='default')                          
 
                     if post_processing:
                         # Post process the mask to make this model look at least a little bit better
